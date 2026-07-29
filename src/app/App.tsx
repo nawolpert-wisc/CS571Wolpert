@@ -1299,7 +1299,7 @@ function MapSection() {
           <div className="lg:col-span-2 bg-card relative overflow-hidden" style={{ minHeight: 520 }}>
             {/* Dot grid texture */}
             <div
-              className="absolute inset-0 opacity-[0.04]"
+              className="absolute inset-0 opacity-[0.04] pointer-events-none"
               style={{
                 backgroundImage: "radial-gradient(circle, #4FB3C0 1px, transparent 1px)",
                 backgroundSize: "22px 22px",
@@ -1360,6 +1360,7 @@ function MapSection() {
                   fontFamily="JetBrains Mono, monospace"
                   letterSpacing="1.2"
                   opacity="0.9"
+                  pointerEvents="none"
                 >
                   {hoveredLoc.name.toUpperCase()}
                 </text>

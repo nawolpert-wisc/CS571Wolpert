@@ -4,7 +4,9 @@ Through this I found Figma to give the most aesthetically pleasing website, but 
 The next step for me was to use copilot to try and adapt the original figma files to something viewable in gitlab-pages.
 
 However, turned out copliot was not great at adapthing these files so I spent the better part of 3 hours just trying to 
-the styling of the webpage so that it was not just an unreadable jumble of information.
+the styling of the webpage so that it was not just an unreadable jumble of information. Originally I thought it was an issue 
+with the card build and how that might be causing weird interactions with how items were divided with in the actual space of 
+webpage. But that wasn't the issue.
 
 This eventually made it so I had to have claude update the CSS with tailwind CSS as that is what figma uses for their prototyping
 which did cause quite a bit of frustration on trying to get the correct vite.config to be used as it was pulling a secondary
