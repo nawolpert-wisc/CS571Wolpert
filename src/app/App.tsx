@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent, useMemo } from "react";
 import {
   Anchor, MapPin, ChevronDown, Send, Menu, X, ArrowRight, Waves,
 } from "lucide-react";
@@ -413,7 +413,7 @@ function SectionLabel({ number, label }: { number: string; label: string }) {
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 
-function Nav({ activeSection }: { activeSection: string }) {
+function Nav({ activeSection, onSearchChange, searchQuery }: { activeSection: string; onSearchChange: (q: string) => void; searchQuery: string; }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -440,6 +440,16 @@ function Nav({ activeSection }: { activeSection: string }) {
               {l.label}
             </button>
           ))}
+        </div>
+
+        <div className="hidden md:flex items-center ml-4">
+          <input
+            aria-label="Search"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search places, routes, events…"
+            className="bg-muted border border-border text-foreground px-3 py-2 rounded-md text-sm w-64 placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent"
+          />
         </div>
 
         <button
@@ -1193,6 +1203,19 @@ function MapSection() {
   const [hovered, setHovered] = useState<string | null>(null);
   const hoveredLoc = MAP_LOCATIONS.find((l) => l.id === hovered);
 
+  useEffect(() => {
+    function handler(e: any) {
+      const id = e?.detail?.id;
+      if (id) {
+        setHovered(id);
+        // briefly keep highlight
+        setTimeout(() => setHovered(null), 4000);
+      }
+    }
+    window.addEventListener("search-select", handler as EventListener);
+    return () => window.removeEventListener("search-select", handler as EventListener);
+  }, []);
+
   return (
     <section id="map" className="py-24 px-6 bg-background">
       <div className="max-w-7xl mx-auto">
@@ -1429,6 +1452,7 @@ function Footer() {
 
 export default function App() {
   const [activeSection, setActiveSection] = useState("hero");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const ids = ["hero", ...NAV_LINKS.map((l) => l.id)];
@@ -1450,7 +1474,73 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Nav activeSection={activeSection} />
+      <Nav activeSection={activeSection} onSearchChange={setSearchQuery} searchQuery={searchQuery} />
+      {searchQuery.length > 0 && (
+        <div className="fixed top-16 left-0 right-0 z-50 px-6">
+          <div className="max-w-7xl mx-auto bg-card border border-border shadow-lg">
+            <div className="divide-y divide-border">
+              {(() => {
+                const q = searchQuery.toLowerCase();
+                const items = [] as Array<{ title: string; subtitle?: string; section: string; id?: string }>;
+
+                ACCOMMODATIONS.forEach((a) => {
+                  if ([a.name, a.location, a.description].join(" ").toLowerCase().includes(q)) {
+                    items.push({ title: a.name, subtitle: a.location, section: "stay" });
+                  }
+                });
+                RESTAURANTS.forEach((r) => {
+                  if ([r.name, r.location, r.description].join(" ").toLowerCase().includes(q)) {
+                    items.push({ title: r.name, subtitle: r.location, section: "eat" });
+                  }
+                });
+                ROUTES.forEach((r) => {
+                  if ([r.name, r.code, r.description].join(" ").toLowerCase().includes(q)) {
+                    items.push({ title: r.name, subtitle: r.code, section: "routes" });
+                  }
+                });
+                EVENTS_DATA.forEach((e) => {
+                  if ([e.name, e.location, e.description].join(" ").toLowerCase().includes(q)) {
+                    items.push({ title: e.name, subtitle: e.location, section: "events" });
+                  }
+                });
+                MAP_LOCATIONS.forEach((m) => {
+                  if ([m.name, m.info].join(" ").toLowerCase().includes(q)) {
+                    items.push({ title: m.name, subtitle: m.type, section: "map", id: m.id });
+                  }
+                });
+
+                if (items.length === 0) {
+                  return <div className="p-6 text-muted-foreground">No results</div>;
+                }
+
+                return (
+                  <div className="p-2 grid gap-1">
+                    {items.slice(0, 8).map((it, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setSearchQuery("");
+                          scrollTo(it.section);
+                          if (it.section === "map" && it.id) {
+                            window.dispatchEvent(new CustomEvent("search-select", { detail: { id: it.id } }));
+                          }
+                        }}
+                        className="text-left p-3 hover:bg-muted/50 transition-colors flex items-center gap-3"
+                      >
+                        <div className="flex-1">
+                          <div className="font-display text-sm text-foreground">{it.title}</div>
+                          {it.subtitle && <div className="font-mono text-[11px] text-muted-foreground">{it.subtitle}</div>}
+                        </div>
+                        <div className="font-mono text-[10px] text-muted-foreground uppercase">{it.section}</div>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
       <HeroSection />
       <DiscoverSection />
       <StaySection />
