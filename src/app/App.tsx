@@ -1,7 +1,8 @@
-import { useState, useEffect, FormEvent, useMemo } from "react";
+import { useState, useEffect, FormEvent, useMemo, useRef } from "react";
 import {
   Anchor, MapPin, ChevronDown, Send, Menu, X, ArrowRight, Waves,
 } from "lucide-react";
+import Fuse from "fuse.js";
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
@@ -1516,6 +1517,68 @@ function Footer() {
 export default function App() {
   const [activeSection, setActiveSection] = useState("hero");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+
+  // Build a flat searchable index for Fuse
+  const searchIndex = useMemo(() => {
+    const list: Array<any> = [];
+    ACCOMMODATIONS.forEach((a, i) => list.push({ id: `stay-${i}`, title: a.name, subtitle: a.location, section: "stay", excerpt: a.description, thumbnail: getThumbnailFor("stay", a), ref: a }));
+    RESTAURANTS.forEach((r, i) => list.push({ id: `eat-${i}`, title: r.name, subtitle: r.location, section: "eat", excerpt: r.description, thumbnail: getThumbnailFor("eat", r), ref: r }));
+    ROUTES.forEach((r, i) => list.push({ id: `routes-${i}`, title: r.name, subtitle: r.code, section: "routes", excerpt: r.description, thumbnail: getThumbnailFor("routes", r), ref: r }));
+    EVENTS_DATA.forEach((e, i) => list.push({ id: `events-${i}`, title: e.name, subtitle: e.location, section: "events", excerpt: e.description, thumbnail: getThumbnailFor("events", e), ref: e }));
+    MAP_LOCATIONS.forEach((m) => list.push({ id: `map-${m.id}`, title: m.name, subtitle: m.type, section: "map", excerpt: m.info, thumbnail: getThumbnailFor("map", m), ref: m }));
+    return list;
+  }, []);
+
+  const fuse = useMemo(() => new Fuse(searchIndex, {
+    keys: [
+      { name: 'title', weight: 0.6 },
+      { name: 'subtitle', weight: 0.2 },
+      { name: 'excerpt', weight: 0.2 },
+    ],
+    threshold: 0.4,
+    includeScore: true,
+  }), [searchIndex]);
+
+  const fuseResults = useMemo(() => {
+    if (!searchQuery) return [] as any[];
+    try {
+      return fuse.search(searchQuery, { limit: 12 });
+    } catch (e) {
+      return [] as any[];
+    }
+  }, [fuse, searchQuery]);
+
+  // keyboard navigation for search results
+  useEffect(() => {
+    if (!searchQuery) return;
+    function onKey(e: KeyboardEvent) {
+      if (fuseResults.length === 0) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((s) => (s + 1) % Math.min(fuseResults.length, 8));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((s) => (s - 1 + Math.min(fuseResults.length, 8)) % Math.min(fuseResults.length, 8));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const chosen = fuseResults[selectedIndex];
+        if (chosen) {
+          const it = chosen.item as any;
+          setSearchQuery("");
+          scrollTo(it.section);
+          if (it.section === 'map' && it.ref && it.ref.id) {
+            window.dispatchEvent(new CustomEvent('search-select', { detail: { id: it.ref.id } }));
+          }
+        }
+      } else if (e.key === 'Escape') {
+        setSearchQuery("");
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchQuery, fuseResults, selectedIndex]);
 
   useEffect(() => {
     const ids = ["hero", ...NAV_LINKS.map((l) => l.id)];
@@ -1542,56 +1605,29 @@ export default function App() {
         <div className="fixed top-16 left-0 right-0 z-50 px-6">
           <div className="max-w-7xl mx-auto bg-card border border-border shadow-lg">
             <div className="divide-y divide-border">
-              {(() => {
-                const q = searchQuery.trim();
-                if (q.length === 0) return null;
-                const items: Array<{ title: string; subtitle?: string; section: string; id?: string; score: number }> = [];
-
-                ACCOMMODATIONS.forEach((a) => {
-                  const combined = [a.name, a.location, a.description].join(" ");
-                  const s = Math.max(fuzzyScore(q, a.name), fuzzyScore(q, a.location), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: a.name, subtitle: a.location, section: "stay", score: s, thumbnail: getThumbnailFor("stay", a), excerpt: a.description?.slice(0, 120) });
-                });
-                RESTAURANTS.forEach((r) => {
-                  const combined = [r.name, r.location, r.description].join(" ");
-                  const s = Math.max(fuzzyScore(q, r.name), fuzzyScore(q, r.location), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: r.name, subtitle: r.location, section: "eat", score: s, thumbnail: getThumbnailFor("eat", r), excerpt: r.description?.slice(0, 120) });
-                });
-                ROUTES.forEach((r) => {
-                  const combined = [r.name, r.code, r.description].join(" ");
-                  const s = Math.max(fuzzyScore(q, r.name), fuzzyScore(q, r.code), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: r.name, subtitle: r.code, section: "routes", score: s, thumbnail: getThumbnailFor("routes", r), excerpt: r.description?.slice(0, 120) });
-                });
-                EVENTS_DATA.forEach((e) => {
-                  const combined = [e.name, e.location, e.description].join(" ");
-                  const s = Math.max(fuzzyScore(q, e.name), fuzzyScore(q, e.location), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: e.name, subtitle: e.location, section: "events", score: s, thumbnail: getThumbnailFor("events", e), excerpt: e.description?.slice(0, 120) });
-                });
-                MAP_LOCATIONS.forEach((m) => {
-                  const combined = [m.name, m.info, m.type].join(" ");
-                  const s = Math.max(fuzzyScore(q, m.name), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: m.name, subtitle: m.type, section: "map", id: m.id, score: s, thumbnail: undefined, excerpt: m.info?.slice(0, 120) });
-                });
-
-                if (items.length === 0) {
-                  return <div className="p-6 text-muted-foreground">No results</div>;
-                }
-
-                items.sort((a, b) => b.score - a.score);
-
-                return (
-                  <div className="p-2 grid gap-1">
-                    {items.slice(0, 8).map((it, i) => (
+              {fuseResults.length === 0 ? (
+                <div className="p-6 text-muted-foreground">No results</div>
+              ) : (
+                <div ref={resultsRef} className="p-2 grid gap-1" role="listbox" aria-activedescendant={`result-${selectedIndex}`} tabIndex={-1}>
+                  {fuseResults.slice(0, 8).map((r, i) => {
+                    const it = r.item as any;
+                    const selected = i === selectedIndex;
+                    return (
                       <button
-                        key={i}
+                        id={`result-${i}`}
+                        key={it.id}
+                        role="option"
+                        aria-selected={selected}
+                        onMouseEnter={() => setSelectedIndex(i)}
                         onClick={() => {
                           setSearchQuery("");
+                          setSelectedIndex(0);
                           scrollTo(it.section);
-                          if (it.section === "map" && it.id) {
-                            window.dispatchEvent(new CustomEvent("search-select", { detail: { id: it.id } }));
+                          if (it.section === "map" && it.ref && it.ref.id) {
+                            window.dispatchEvent(new CustomEvent("search-select", { detail: { id: it.ref.id } }));
                           }
                         }}
-                        className="text-left p-3 hover:bg-muted/50 transition-colors flex items-start gap-3"
+                        className={`text-left p-3 hover:bg-muted/50 transition-colors flex items-start gap-3 ${selected ? 'bg-muted/30' : ''}`}
                       >
                         <div className="w-20 h-14 rounded overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
                           {it.thumbnail ? (
@@ -1611,10 +1647,10 @@ export default function App() {
                           {it.excerpt && <div className="font-body text-sm text-muted-foreground/70 mt-2">{it.excerpt}…</div>}
                         </div>
                       </button>
-                    ))}
-                  </div>
-                );
-              })()}
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
