@@ -1,5 +1,15 @@
-I used figma as a base for generating the initial content it created a version of website using typescript that I then
-had converted over to JavaScript and used claude code in vscode to refine the content of the figma outline.
+AI was used for essentially 100% of the website. But I used a combination of Figma's prototyping logics, copilot and claude.
 
+Through this I found Figma to give the most aesthetically pleasing website, but difficult to pull into a JS level project.
+The next step for me was to use copilot to try and adapt the original figma files to something viewable in gitlab-pages.
 
+However, turned out copliot was not great at adapthing these files so I spent the better part of 3 hours just trying to 
+the styling of the webpage so that it was not just an unreadable jumble of information.
+
+This eventually made it so I had to have claude update the CSS with tailwind CSS as that is what figma uses for their prototyping
+which did cause quite a bit of frustration on trying to get the correct vite.config to be used as it was pulling a secondary
+file that was generated as part of the boilerplate app dev from the first assignment.
+
+After that I went on to try and correct the weird AI artifacts with in the webpage itself, i.e. random pictures of essentially
+getysburg images of people.
 
