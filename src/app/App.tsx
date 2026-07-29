@@ -1608,7 +1608,9 @@ export default function App() {
               {fuseResults.length === 0 ? (
                 <div className="p-6 text-muted-foreground">No results</div>
               ) : (
-                <div ref={resultsRef} className="p-2 grid gap-1" role="listbox" aria-activedescendant={`result-${selectedIndex}`} tabIndex={-1}>
+                <>
+                  <div className="sr-only" aria-live="polite" aria-atomic="true">{`${fuseResults.length} results`}</div>
+                  <div ref={resultsRef} className="p-2 grid gap-1" role="listbox" aria-activedescendant={`result-${selectedIndex}`} tabIndex={-1} aria-label="Search results">
                   {fuseResults.slice(0, 8).map((r, i) => {
                     const it = r.item as any;
                     const selected = i === selectedIndex;
@@ -1619,6 +1621,8 @@ export default function App() {
                         role="option"
                         aria-selected={selected}
                         onMouseEnter={() => setSelectedIndex(i)}
+                        onFocus={() => setSelectedIndex(i)}
+                        tabIndex={0}
                         onClick={() => {
                           setSearchQuery("");
                           setSelectedIndex(0);
@@ -1627,7 +1631,7 @@ export default function App() {
                             window.dispatchEvent(new CustomEvent("search-select", { detail: { id: it.ref.id } }));
                           }
                         }}
-                        className={`text-left p-3 hover:bg-muted/50 transition-colors flex items-start gap-3 ${selected ? 'bg-muted/30' : ''}`}
+                        className={`text-left p-3 hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-accent transition-colors flex items-start gap-3 ${selected ? 'bg-muted/30' : ''}`}
                       >
                         <div className="w-20 h-14 rounded overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
                           {it.thumbnail ? (
@@ -1649,7 +1653,8 @@ export default function App() {
                       </button>
                     );
                   })}
-                </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
