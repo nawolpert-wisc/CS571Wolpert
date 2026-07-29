@@ -432,8 +432,23 @@ function getThumbnailFor(type: string, source: any) {
   if (type === "routes" && source.image) return source.image;
   if (type === "eat") return source.image || "https://images.unsplash.com/photo-1541542684-45c6c9d9f8a1?w=800&h=500&fit=crop&auto=format";
   if (type === "events") return source.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=500&fit=crop&auto=format";
-  if (type === "map") return undefined;
+  if (type === "map") {
+    // generate a small SVG placeholder per location type/name
+    const name = (source && source.name) ? String(source.name) : "Place";
+    const color = (source && source.type && TYPE_COLORS[source.type]) ? TYPE_COLORS[source.type] : "#6B8F71";
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180' viewBox='0 0 320 180'>` +
+      `<rect width='100%' height='100%' fill='${color}' rx='8'/>` +
+      `<g fill='rgba(240,234,216,0.95)' font-family='Arial, Helvetica, sans-serif' font-size='18' font-weight='700'>` +
+      `<text x='16' y='36'>${escapeHtml(name)}</text>` +
+      `</g>` +
+      `</svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  }
   return source.image;
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 // ─── SHARED COMPONENTS ───────────────────────────────────────────────────────
