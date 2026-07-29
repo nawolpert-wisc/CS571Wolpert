@@ -426,6 +426,16 @@ function fuzzyScore(query: string, text: string) {
   return score;
 }
 
+function getThumbnailFor(type: string, source: any) {
+  if (!source) return undefined;
+  if (type === "stay" && source.image) return source.image;
+  if (type === "routes" && source.image) return source.image;
+  if (type === "eat") return source.image || "https://images.unsplash.com/photo-1541542684-45c6c9d9f8a1?w=800&h=500&fit=crop&auto=format";
+  if (type === "events") return source.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=500&fit=crop&auto=format";
+  if (type === "map") return undefined;
+  return source.image;
+}
+
 // ─── SHARED COMPONENTS ───────────────────────────────────────────────────────
 
 function SectionLabel({ number, label }: { number: string; label: string }) {
@@ -568,14 +578,14 @@ function HeroSection() {
 
 function DiscoverSection() {
   const cards = [
-    { id: "stay",     num: "04", title: "Places to Rest",     desc: "From the world-famous Fogo Island Inn to historic St. John's harbour hotels, extraordinary lodging awaits.",          icon: "🏨" },
-    { id: "eat",      num: "05", title: "Places to Eat",      desc: "Salt cod, scrunchions, partridgeberry — the province's culinary identity is singular and deeply delicious.",           icon: "🍽️" },
-    { id: "routes",   num: "06", title: "Scenic Routes",      desc: "Drive the Viking Trail through Gros Morne, circle the Irish Loop, or follow the Kittiwake Coast to iceberg alley.",  icon: "🛣️" },
-    { id: "wildlife", num: "07", title: "Wildlife & Seasons", desc: "Icebergs in April. Puffins in June. Humpbacks all summer. Track and report your sightings.",                         icon: "🐋" },
-    { id: "history",  num: "08", title: "A Deep History",     desc: "Norse settlements, Beothuk culture, a century of colonial rivalry, and the narrowest vote in Confederation history.", icon: "⚓" },
-    { id: "gander",   num: "09", title: "Come From Away",     desc: "How the people of Gander opened their homes to 7,000 strangers on September 11, 2001.",                             icon: "✈️" },
-    { id: "events",   num: "10", title: "Events & Adventure", desc: "North America's oldest sporting event, ultramarathons on coastal barrens, folk festivals and more.",                 icon: "🎭" },
-    { id: "map",      num: "11", title: "The Island Map",     desc: "An illustrated guide to key destinations across Newfoundland, from St. John's to L'Anse aux Meadows.",               icon: "🗺️" },
+    { id: "stay",     num: "04", title: "Places to Rest",     desc: "From the world-famous Fogo Island Inn to historic St. John's harbour hotels, extraordinary lodging awaits.",          icon: "🏨", image: ACCOMMODATIONS[0]?.image },
+    { id: "eat",      num: "05", title: "Places to Eat",      desc: "Salt cod, scrunchions, partridgeberry — the province's culinary identity is singular and deeply delicious.",           icon: "🍽️", image: RESTAURANTS[0]?.image || undefined },
+    { id: "routes",   num: "06", title: "Scenic Routes",      desc: "Drive the Viking Trail through Gros Morne, circle the Irish Loop, or follow the Kittiwake Coast to iceberg alley.",  icon: "🛣️", image: ROUTES[0]?.image },
+    { id: "wildlife", num: "07", title: "Wildlife & Seasons", desc: "Icebergs in April. Puffins in June. Humpbacks all summer. Track and report your sightings.",                         icon: "🐋", image: undefined },
+    { id: "history",  num: "08", title: "A Deep History",     desc: "Norse settlements, Beothuk culture, a century of colonial rivalry, and the narrowest vote in Confederation history.", icon: "⚓", image: "https://images.unsplash.com/photo-1567108077905-f8a10e69a5a6?w=1600&h=400&fit=crop&auto=format" },
+    { id: "gander",   num: "09", title: "Come From Away",     desc: "How the people of Gander opened their homes to 7,000 strangers on September 11, 2001.",                             icon: "✈️", image: "https://images.unsplash.com/photo-1639512464796-315a29c939c9?w=800&h=900&fit=crop&auto=format" },
+    { id: "events",   num: "10", title: "Events & Adventure", desc: "North America's oldest sporting event, ultramarathons on coastal barrens, folk festivals and more.",                 icon: "🎭", image: undefined },
+    { id: "map",      num: "11", title: "The Island Map",     desc: "An illustrated guide to key destinations across Newfoundland, from St. John's to L'Anse aux Meadows.",               icon: "🗺️", image: undefined },
   ];
 
   return (
@@ -604,15 +614,26 @@ function DiscoverSection() {
             <button
               key={c.id}
               onClick={() => scrollTo(c.id)}
-              className="group bg-card p-7 text-left hover:bg-secondary transition-colors duration-200 flex flex-col"
+              className="group bg-card overflow-hidden hover:bg-secondary transition-colors duration-200 flex flex-col"
             >
-              <div className="text-2xl mb-5">{c.icon}</div>
-              <div className="font-mono text-[9px] tracking-[0.3em] text-accent uppercase mb-2">{c.num}</div>
-              <h3 className="font-display text-base text-foreground mb-3 group-hover:text-accent transition-colors leading-snug">
-                {c.title}
-              </h3>
-              <p className="font-body text-sm text-muted-foreground leading-relaxed flex-1">{c.desc}</p>
-              <ArrowRight className="w-3.5 h-3.5 text-accent mt-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="h-40 bg-secondary overflow-hidden">
+                {c.image ? (
+                  <img src={c.image} alt={c.title} className="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-all" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-3xl">{c.icon}</div>
+                )}
+              </div>
+              <div className="p-6 flex flex-col flex-1">
+                <div className="font-mono text-[9px] tracking-[0.3em] text-accent uppercase mb-2">{c.num}</div>
+                <h3 className="font-display text-base text-foreground mb-3 group-hover:text-accent transition-colors leading-snug">
+                  {c.title}
+                </h3>
+                <p className="font-body text-sm text-muted-foreground leading-relaxed flex-1">{c.desc}</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <ArrowRight className="w-3.5 h-3.5 text-accent" />
+                  <span className="font-mono text-[10px] text-muted-foreground uppercase">Explore</span>
+                </div>
+              </div>
             </button>
           ))}
         </div>
@@ -1514,27 +1535,27 @@ export default function App() {
                 ACCOMMODATIONS.forEach((a) => {
                   const combined = [a.name, a.location, a.description].join(" ");
                   const s = Math.max(fuzzyScore(q, a.name), fuzzyScore(q, a.location), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: a.name, subtitle: a.location, section: "stay", score: s });
+                  if (s > 0) items.push({ title: a.name, subtitle: a.location, section: "stay", score: s, thumbnail: getThumbnailFor("stay", a), excerpt: a.description?.slice(0, 120) });
                 });
                 RESTAURANTS.forEach((r) => {
                   const combined = [r.name, r.location, r.description].join(" ");
                   const s = Math.max(fuzzyScore(q, r.name), fuzzyScore(q, r.location), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: r.name, subtitle: r.location, section: "eat", score: s });
+                  if (s > 0) items.push({ title: r.name, subtitle: r.location, section: "eat", score: s, thumbnail: getThumbnailFor("eat", r), excerpt: r.description?.slice(0, 120) });
                 });
                 ROUTES.forEach((r) => {
                   const combined = [r.name, r.code, r.description].join(" ");
                   const s = Math.max(fuzzyScore(q, r.name), fuzzyScore(q, r.code), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: r.name, subtitle: r.code, section: "routes", score: s });
+                  if (s > 0) items.push({ title: r.name, subtitle: r.code, section: "routes", score: s, thumbnail: getThumbnailFor("routes", r), excerpt: r.description?.slice(0, 120) });
                 });
                 EVENTS_DATA.forEach((e) => {
                   const combined = [e.name, e.location, e.description].join(" ");
                   const s = Math.max(fuzzyScore(q, e.name), fuzzyScore(q, e.location), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: e.name, subtitle: e.location, section: "events", score: s });
+                  if (s > 0) items.push({ title: e.name, subtitle: e.location, section: "events", score: s, thumbnail: getThumbnailFor("events", e), excerpt: e.description?.slice(0, 120) });
                 });
                 MAP_LOCATIONS.forEach((m) => {
                   const combined = [m.name, m.info, m.type].join(" ");
                   const s = Math.max(fuzzyScore(q, m.name), fuzzyScore(q, combined));
-                  if (s > 0) items.push({ title: m.name, subtitle: m.type, section: "map", id: m.id, score: s });
+                  if (s > 0) items.push({ title: m.name, subtitle: m.type, section: "map", id: m.id, score: s, thumbnail: undefined, excerpt: m.info?.slice(0, 120) });
                 });
 
                 if (items.length === 0) {
@@ -1555,13 +1576,25 @@ export default function App() {
                             window.dispatchEvent(new CustomEvent("search-select", { detail: { id: it.id } }));
                           }
                         }}
-                        className="text-left p-3 hover:bg-muted/50 transition-colors flex items-center gap-3"
+                        className="text-left p-3 hover:bg-muted/50 transition-colors flex items-start gap-3"
                       >
-                        <div className="flex-1">
-                          <div className="font-display text-sm text-foreground">{it.title}</div>
-                          {it.subtitle && <div className="font-mono text-[11px] text-muted-foreground">{it.subtitle}</div>}
+                        <div className="w-20 h-14 rounded overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                          {it.thumbnail ? (
+                            // @ts-ignore
+                            <img src={it.thumbnail} alt={it.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">{it.section.toUpperCase()}</div>
+                          )}
                         </div>
-                        <div className="font-mono text-[10px] text-muted-foreground uppercase">{it.section}</div>
+
+                        <div className="flex-1">
+                          <div className="flex items-baseline justify-between gap-4">
+                            <div className="font-display text-sm text-foreground">{it.title}</div>
+                            <div className="font-mono text-[10px] text-muted-foreground uppercase">{it.section}</div>
+                          </div>
+                          {it.subtitle && <div className="font-mono text-[11px] text-muted-foreground">{it.subtitle}</div>}
+                          {it.excerpt && <div className="font-body text-sm text-muted-foreground/70 mt-2">{it.excerpt}…</div>}
+                        </div>
                       </button>
                     ))}
                   </div>
