@@ -1611,48 +1611,48 @@ export default function App() {
                 <>
                   <div className="sr-only" aria-live="polite" aria-atomic="true">{`${fuseResults.length} results`}</div>
                   <div ref={resultsRef} className="p-2 grid gap-1" role="listbox" aria-activedescendant={`result-${selectedIndex}`} tabIndex={-1} aria-label="Search results">
-                  {fuseResults.slice(0, 8).map((r, i) => {
-                    const it = r.item as any;
-                    const selected = i === selectedIndex;
-                    return (
-                      <button
-                        id={`result-${i}`}
-                        key={it.id}
-                        role="option"
-                        aria-selected={selected}
-                        onMouseEnter={() => setSelectedIndex(i)}
-                        onFocus={() => setSelectedIndex(i)}
-                        tabIndex={0}
-                        onClick={() => {
-                          setSearchQuery("");
-                          setSelectedIndex(0);
-                          scrollTo(it.section);
-                          if (it.section === "map" && it.ref && it.ref.id) {
-                            window.dispatchEvent(new CustomEvent("search-select", { detail: { id: it.ref.id } }));
-                          }
-                        }}
-                        className={`text-left p-3 hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-accent transition-colors flex items-start gap-3 ${selected ? 'bg-muted/30' : ''}`}
-                      >
-                        <div className="w-20 h-14 rounded overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
-                          {it.thumbnail ? (
-                            // @ts-ignore
-                            <img src={it.thumbnail} alt={it.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">{it.section.toUpperCase()}</div>
-                          )}
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-baseline justify-between gap-4">
-                            <div className="font-display text-sm text-foreground">{it.title}</div>
-                            <div className="font-mono text-[10px] text-muted-foreground uppercase">{it.section}</div>
+                    {fuseResults.slice(0, 8).map((r, i) => {
+                      const it = r.item as any;
+                      const selected = i === selectedIndex;
+                      return (
+                        <button
+                          id={`result-${i}`}
+                          key={it.id}
+                          role="option"
+                          aria-selected={selected}
+                          onMouseEnter={() => setSelectedIndex(i)}
+                          onFocus={() => setSelectedIndex(i)}
+                          tabIndex={0}
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSelectedIndex(0);
+                            scrollTo(it.section);
+                            if (it.section === "map" && it.ref && it.ref.id) {
+                              window.dispatchEvent(new CustomEvent("search-select", { detail: { id: it.ref.id } }));
+                            }
+                          }}
+                          className={`text-left p-3 hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-accent transition-colors flex items-start gap-3 ${selected ? 'bg-muted/30' : ''}`}
+                        >
+                          <div className="w-20 h-14 rounded overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                            {it.thumbnail ? (
+                              // @ts-ignore
+                              <img src={it.thumbnail} alt={it.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">{it.section.toUpperCase()}</div>
+                            )}
                           </div>
-                          {it.subtitle && <div className="font-mono text-[11px] text-muted-foreground">{it.subtitle}</div>}
-                          {it.excerpt && <div className="font-body text-sm text-muted-foreground/70 mt-2">{it.excerpt}…</div>}
-                        </div>
-                      </button>
-                    );
-                  })}
+
+                          <div className="flex-1">
+                            <div className="flex items-baseline justify-between gap-4">
+                              <div className="font-display text-sm text-foreground">{it.title}</div>
+                              <div className="font-mono text-[10px] text-muted-foreground uppercase">{it.section}</div>
+                            </div>
+                            {it.subtitle && <div className="font-mono text-[11px] text-muted-foreground">{it.subtitle}</div>}
+                            {it.excerpt && <div className="font-body text-sm text-muted-foreground/70 mt-2">{it.excerpt}…</div>}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               )}
