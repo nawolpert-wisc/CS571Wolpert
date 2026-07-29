@@ -1,0 +1,5 @@
+I used figma as a base for generating the initial content it created a version of website using typescript that I then
+had converted over to JavaScript and used claude code in vscode to refine the content of the figma outline.
+
+
+
