@@ -399,6 +399,33 @@ function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 }
 
+// Lightweight fuzzy matcher: returns 0 for no match, higher is better
+function fuzzyScore(query: string, text: string) {
+  if (!query) return 0;
+  const q = query.toLowerCase().trim();
+  const t = text.toLowerCase();
+  if (t.includes(q)) return 100 + q.length; // substring match ranks highest
+
+  // check subsequence match and prefer more contiguous matches
+  let qi = 0;
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < t.length && qi < q.length; i++) {
+    if (t[i] === q[qi]) {
+      if (first === -1) first = i;
+      last = i;
+      qi++;
+    }
+  }
+  if (qi !== q.length) return 0; // not a subsequence
+
+  const span = last - first + 1;
+  // score favors short spans (more contiguous) and longer queries
+  const contiguity = q.length / span; // 1 = fully contiguous, smaller if spread out
+  const score = Math.floor(contiguity * 80) + Math.max(0, 20 - span);
+  return score;
+}
+
 // ─── SHARED COMPONENTS ───────────────────────────────────────────────────────
 
 function SectionLabel({ number, label }: { number: string; label: string }) {
@@ -1480,38 +1507,41 @@ export default function App() {
           <div className="max-w-7xl mx-auto bg-card border border-border shadow-lg">
             <div className="divide-y divide-border">
               {(() => {
-                const q = searchQuery.toLowerCase();
-                const items = [] as Array<{ title: string; subtitle?: string; section: string; id?: string }>;
+                const q = searchQuery.trim();
+                if (q.length === 0) return null;
+                const items: Array<{ title: string; subtitle?: string; section: string; id?: string; score: number }> = [];
 
                 ACCOMMODATIONS.forEach((a) => {
-                  if ([a.name, a.location, a.description].join(" ").toLowerCase().includes(q)) {
-                    items.push({ title: a.name, subtitle: a.location, section: "stay" });
-                  }
+                  const combined = [a.name, a.location, a.description].join(" ");
+                  const s = Math.max(fuzzyScore(q, a.name), fuzzyScore(q, a.location), fuzzyScore(q, combined));
+                  if (s > 0) items.push({ title: a.name, subtitle: a.location, section: "stay", score: s });
                 });
                 RESTAURANTS.forEach((r) => {
-                  if ([r.name, r.location, r.description].join(" ").toLowerCase().includes(q)) {
-                    items.push({ title: r.name, subtitle: r.location, section: "eat" });
-                  }
+                  const combined = [r.name, r.location, r.description].join(" ");
+                  const s = Math.max(fuzzyScore(q, r.name), fuzzyScore(q, r.location), fuzzyScore(q, combined));
+                  if (s > 0) items.push({ title: r.name, subtitle: r.location, section: "eat", score: s });
                 });
                 ROUTES.forEach((r) => {
-                  if ([r.name, r.code, r.description].join(" ").toLowerCase().includes(q)) {
-                    items.push({ title: r.name, subtitle: r.code, section: "routes" });
-                  }
+                  const combined = [r.name, r.code, r.description].join(" ");
+                  const s = Math.max(fuzzyScore(q, r.name), fuzzyScore(q, r.code), fuzzyScore(q, combined));
+                  if (s > 0) items.push({ title: r.name, subtitle: r.code, section: "routes", score: s });
                 });
                 EVENTS_DATA.forEach((e) => {
-                  if ([e.name, e.location, e.description].join(" ").toLowerCase().includes(q)) {
-                    items.push({ title: e.name, subtitle: e.location, section: "events" });
-                  }
+                  const combined = [e.name, e.location, e.description].join(" ");
+                  const s = Math.max(fuzzyScore(q, e.name), fuzzyScore(q, e.location), fuzzyScore(q, combined));
+                  if (s > 0) items.push({ title: e.name, subtitle: e.location, section: "events", score: s });
                 });
                 MAP_LOCATIONS.forEach((m) => {
-                  if ([m.name, m.info].join(" ").toLowerCase().includes(q)) {
-                    items.push({ title: m.name, subtitle: m.type, section: "map", id: m.id });
-                  }
+                  const combined = [m.name, m.info, m.type].join(" ");
+                  const s = Math.max(fuzzyScore(q, m.name), fuzzyScore(q, combined));
+                  if (s > 0) items.push({ title: m.name, subtitle: m.type, section: "map", id: m.id, score: s });
                 });
 
                 if (items.length === 0) {
                   return <div className="p-6 text-muted-foreground">No results</div>;
                 }
+
+                items.sort((a, b) => b.score - a.score);
 
                 return (
                   <div className="p-2 grid gap-1">
