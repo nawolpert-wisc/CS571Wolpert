@@ -431,8 +431,8 @@ function getThumbnailFor(type: string, source: any) {
   if (!source) return undefined;
   if (type === "stay" && source.image) return source.image;
   if (type === "routes" && source.image) return source.image;
-  if (type === "eat") return source.image || "https://images.unsplash.com/photo-1541542684-45c6c9d9f8a1?w=800&h=500&fit=crop&auto=format";
-  if (type === "events") return source.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=500&fit=crop&auto=format";
+  if (type === "eat") return source.image;
+  if (type === "events") return source.image;
   if (type === "map") {
     // generate a small SVG placeholder per location type/name
     const name = (source && source.name) ? String(source.name) : "Place";
