@@ -1408,7 +1408,7 @@ function MapSection() {
 
           {/* Location detail panel */}
           <div className="bg-card flex flex-col">
-            <div className="flex-1 p-7">
+            <div className="flex-1 p-7" onMouseLeave={() => setHovered(null)}>
               {hoveredLoc ? (
                 <>
                   <div
