@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent, useMemo, useRef } from "react";
 import {
-  Anchor, MapPin, ChevronDown, Send, Menu, X, ArrowRight, Waves,
+  Anchor, MapPin, ChevronDown, Send, Menu, X, ArrowRight, Waves, ThumbsUp,
 } from "lucide-react";
 import Fuse from "fuse.js";
 import { supabase, supabaseConfigured, type Sighting } from "./lib/supabase";
@@ -470,6 +470,35 @@ function jitterOffset(seed: string, spread: number) {
   const angle = (hash % 360) * (Math.PI / 180);
   const radius = 10 + (hash % spread);
   return { dx: Math.cos(angle) * radius, dy: Math.sin(angle) * radius };
+}
+
+function timeAgo(iso: string) {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
+const UPVOTED_STORAGE_KEY = "nl-guide-upvoted-sightings";
+
+function getUpvotedSightingIds(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(UPVOTED_STORAGE_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function markSightingUpvoted(id: string) {
+  const ids = getUpvotedSightingIds();
+  ids.add(id);
+  localStorage.setItem(UPVOTED_STORAGE_KEY, JSON.stringify([...ids]));
 }
 
 // Lightweight fuzzy matcher: returns 0 for no match, higher is better
@@ -1470,6 +1499,7 @@ function MapSection() {
   const [selected, setSelected] = useState<string | null>(null);
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [hoveredSightingId, setHoveredSightingId] = useState<string | null>(null);
+  const [upvotedIds, setUpvotedIds] = useState<Set<string>>(() => getUpvotedSightingIds());
   const activeId = hovered ?? selected;
   const hoveredLoc = MAP_LOCATIONS.find((l) => l.id === activeId);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -1499,8 +1529,34 @@ function MapSection() {
     for (const s of sightings) {
       (map[s.location_id] ??= []).push(s);
     }
+    for (const list of Object.values(map)) {
+      list.sort((a, b) => new Date(b.last_confirmed_at).getTime() - new Date(a.last_confirmed_at).getTime());
+    }
     return map;
   }, [sightings]);
+
+  async function handleUpvote(sighting: Sighting) {
+    if (upvotedIds.has(sighting.id) || !supabaseConfigured) return;
+
+    const now = new Date().toISOString();
+    setSightings((prev) =>
+      prev.map((s) => (s.id === sighting.id ? { ...s, upvotes: s.upvotes + 1, last_confirmed_at: now } : s))
+    );
+    markSightingUpvoted(sighting.id);
+    setUpvotedIds((prev) => new Set(prev).add(sighting.id));
+
+    const { error } = await supabase
+      .from("sightings")
+      .update({ upvotes: sighting.upvotes + 1, last_confirmed_at: now })
+      .eq("id", sighting.id);
+
+    if (error) {
+      // Revert the optimistic update if the write failed.
+      setSightings((prev) =>
+        prev.map((s) => (s.id === sighting.id ? sighting : s))
+      );
+    }
+  }
 
   const hoveredSighting = sightings.find((s) => s.id === hoveredSightingId);
   const hoveredCluster = hoveredSighting ? sightingsByLocation[hoveredSighting.location_id] ?? [hoveredSighting] : null;
@@ -1713,19 +1769,41 @@ function MapSection() {
                         Community Sightings ({sightingsByLocation[hoveredLoc.id].length})
                       </div>
                       <div className="space-y-3">
-                        {sightingsByLocation[hoveredLoc.id].slice(0, 5).map((s) => (
-                          <div key={s.id} className="flex items-start gap-2.5">
-                            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ background: SIGHTING_COLOR }} />
-                            <div>
-                              <div className="font-body text-sm text-foreground/80">
-                                {s.species} <span className="text-foreground/40">· {s.sighted_on}</span>
+                        {sightingsByLocation[hoveredLoc.id].slice(0, 5).map((s) => {
+                          const alreadyUpvoted = upvotedIds.has(s.id);
+                          return (
+                            <div key={s.id} className="flex items-start gap-2.5">
+                              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ background: SIGHTING_COLOR }} />
+                              <div className="flex-1">
+                                <div className="font-body text-sm text-foreground/80">
+                                  {s.species} <span className="text-foreground/40">· {s.sighted_on}</span>
+                                </div>
+                                {s.description && (
+                                  <p className="font-body text-xs text-foreground/50 leading-relaxed mt-0.5">{s.description}</p>
+                                )}
+                                <div className="flex items-center gap-3 mt-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpvote(s)}
+                                    disabled={alreadyUpvoted}
+                                    className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
+                                      alreadyUpvoted
+                                        ? "text-accent cursor-default"
+                                        : "text-muted-foreground hover:text-accent cursor-pointer"
+                                    }`}
+                                  >
+                                    <ThumbsUp className="w-3 h-3" strokeWidth={1.5} fill={alreadyUpvoted ? "currentColor" : "none"} />
+                                    {alreadyUpvoted ? "Seen it too" : "Seen again recently?"}
+                                    {s.upvotes > 0 && <span>({s.upvotes})</span>}
+                                  </button>
+                                  <span className="font-mono text-[9px] text-muted-foreground/50">
+                                    confirmed {timeAgo(s.last_confirmed_at)}
+                                  </span>
+                                </div>
                               </div>
-                              {s.description && (
-                                <p className="font-body text-xs text-foreground/50 leading-relaxed mt-0.5">{s.description}</p>
-                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

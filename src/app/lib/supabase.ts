@@ -25,4 +25,6 @@ export type Sighting = {
   sighted_on: string;
   description: string | null;
   reporter_name: string | null;
+  upvotes: number;
+  last_confirmed_at: string;
 };
