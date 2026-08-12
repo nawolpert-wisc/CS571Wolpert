@@ -1408,7 +1408,7 @@ function MapSection() {
 
           {/* Location detail panel */}
           <div className="bg-card flex flex-col">
-            <div className="flex-1 p-7" onMouseLeave={() => setHovered(null)}>
+            <div className="flex-1 p-7">
               {hoveredLoc ? (
                 <>
                   <div
@@ -1433,8 +1433,6 @@ function MapSection() {
                     {MAP_LOCATIONS.map((loc) => (
                       <div
                         key={loc.id}
-                        onMouseEnter={() => setHovered(loc.id)}
-                        onMouseLeave={() => setHovered(null)}
                         onClick={() => setSelected((prev) => (prev === loc.id ? null : loc.id))}
                         role="button"
                         aria-pressed={selected === loc.id}
