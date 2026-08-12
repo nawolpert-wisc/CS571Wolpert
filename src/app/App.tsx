@@ -1271,7 +1271,10 @@ function EventsSection() {
 
 function MapSection() {
   const [hovered, setHovered] = useState<string | null>(null);
-  const hoveredLoc = MAP_LOCATIONS.find((l) => l.id === hovered);
+  const [selected, setSelected] = useState<string | null>(null);
+  const activeId = hovered ?? selected;
+  const hoveredLoc = MAP_LOCATIONS.find((l) => l.id === activeId);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handler(e: any) {
@@ -1286,6 +1289,16 @@ function MapSection() {
     return () => window.removeEventListener("search-select", handler as EventListener);
   }, []);
 
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (mapRef.current && !mapRef.current.contains(e.target as Node)) {
+        setSelected(null);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
   return (
     <section id="map" className="py-24 px-6 bg-background">
       <div className="max-w-7xl mx-auto">
@@ -1295,14 +1308,14 @@ function MapSection() {
             Newfoundland Island
           </h2>
           <p className="font-body text-foreground/65 leading-relaxed self-end">
-            An illustrated guide to key destinations. Hover any marker to see details.
+            An illustrated guide to key destinations. Hover a marker for a preview, or click one to pin its details.
             Labrador — to the west and north — is connected by ferry from St. Barbe to Blanc-Sablon.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-px bg-border">
           {/* SVG Map */}
-          <div className="lg:col-span-2 bg-card relative overflow-hidden" style={{ minHeight: 520 }}>
+          <div ref={mapRef} className="lg:col-span-2 bg-card relative overflow-hidden" style={{ minHeight: 520 }}>
             {/* Dot grid texture */}
             <div
               className="absolute inset-0 opacity-[0.04] pointer-events-none"
@@ -1317,6 +1330,7 @@ function MapSection() {
               className="w-full"
               style={{ minHeight: 520 }}
               aria-label="Illustrated map of the island of Newfoundland with key destination markers"
+              onClick={() => setSelected(null)}
             >
               {/* Island fill */}
               <path
@@ -1338,16 +1352,21 @@ function MapSection() {
               {/* Markers */}
               {MAP_LOCATIONS.map((loc) => {
                 const color = TYPE_COLORS[loc.type];
-                const isHovered = hovered === loc.id;
+                const isHovered = activeId === loc.id;
                 return (
                   <g
                     key={loc.id}
                     transform={`translate(${loc.x},${loc.y})`}
                     onMouseEnter={() => setHovered(loc.id)}
                     onMouseLeave={() => setHovered(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected((prev) => (prev === loc.id ? null : loc.id));
+                    }}
                     style={{ cursor: "pointer" }}
                     role="button"
                     aria-label={loc.name}
+                    aria-pressed={selected === loc.id}
                   >
                     <circle r="12" fill={color} opacity="0.1" />
                     <circle r={isHovered ? 5.5 : 4} fill={color} style={{ transition: "r 0.15s" }} />
