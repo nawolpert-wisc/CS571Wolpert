@@ -1552,6 +1552,7 @@ function MapSection() {
     supabaseConfigured ? "loading" : "unavailable"
   );
   const [hoveredSightingId, setHoveredSightingId] = useState<string | null>(null);
+  const [selectedSightingId, setSelectedSightingId] = useState<string | null>(null);
   const [upvotedIds, setUpvotedIds] = useState<Set<string>>(() => getUpvotedSightingIds());
   const activeId = hovered ?? selected;
   const hoveredLoc = MAP_LOCATIONS.find((l) => l.id === activeId);
@@ -1616,7 +1617,9 @@ function MapSection() {
     }
   }
 
-  const hoveredSighting = sightings.find((s) => s.id === hoveredSightingId);
+  const activeSightingId = hoveredSightingId ?? selectedSightingId;
+  const isSightingPinned = selectedSightingId !== null && activeSightingId === selectedSightingId;
+  const hoveredSighting = sightings.find((s) => s.id === activeSightingId);
   const hoveredCluster = hoveredSighting ? sightingsByLocation[hoveredSighting.location_id] ?? [hoveredSighting] : null;
   const hoveredClusterLoc = hoveredSighting
     ? SIGHTING_PLACES.find((p) => p.id === hoveredSighting.location_id)
@@ -1639,6 +1642,7 @@ function MapSection() {
     function handleOutsideClick(e: MouseEvent) {
       if (mapRef.current && !mapRef.current.contains(e.target as Node)) {
         setSelected(null);
+        setSelectedSightingId(null);
       }
     }
     document.addEventListener("mousedown", handleOutsideClick);
@@ -1689,7 +1693,7 @@ function MapSection() {
               className="w-full"
               style={{ minHeight: 520 }}
               aria-label="Illustrated map of the island of Newfoundland with key destination markers"
-              onClick={() => setSelected(null)}
+              onClick={() => { setSelected(null); setSelectedSightingId(null); }}
             >
               {/* Island fill */}
               <path
@@ -1759,9 +1763,26 @@ function MapSection() {
                     r={isActive ? 3.5 : 2.5}
                     fill={SIGHTING_COLOR}
                     opacity="0.85"
-                    style={{ cursor: "pointer", transition: "r 0.1s" }}
+                    style={{ cursor: "pointer", transition: "r 0.1s", outline: "none" }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${s.species} sighting near ${loc.name}, confirm if seen again`}
+                    aria-pressed={selectedSightingId === s.id}
                     onMouseEnter={() => setHoveredSightingId(s.id)}
                     onMouseLeave={() => setHoveredSightingId(null)}
+                    onFocus={() => setHoveredSightingId(s.id)}
+                    onBlur={() => setHoveredSightingId(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSightingId((prev) => (prev === s.id ? null : s.id));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedSightingId((prev) => (prev === s.id ? null : s.id));
+                      }
+                    }}
                   />
                 );
               })}
@@ -1796,12 +1817,12 @@ function MapSection() {
               </g>
             </svg>
 
-            {/* Sighting hover tooltip */}
+            {/* Sighting hover/pinned tooltip */}
             {hoveredSighting && hoveredCluster && hoveredClusterLoc && (
               <div
                 className="absolute bg-card border border-border shadow-lg px-4 py-3 max-w-[240px]"
                 style={{
-                  pointerEvents: "none",
+                  pointerEvents: isSightingPinned ? "auto" : "none",
                   zIndex: 10,
                   left: `${(hoveredClusterLoc.x / 440) * 100}%`,
                   top: `${(hoveredClusterLoc.y / 420) * 100}%`,
@@ -1812,17 +1833,43 @@ function MapSection() {
                   {hoveredClusterLoc.name} · {hoveredCluster.length} sighting{hoveredCluster.length > 1 ? "s" : ""}
                 </div>
                 <div className="space-y-2.5 max-h-48 overflow-y-auto">
-                  {hoveredCluster.slice(0, 6).map((s) => (
-                    <div key={s.id}>
-                      <div className="font-body text-sm text-foreground/85">
-                        {s.species} <span className="text-foreground/40">· {s.sighted_on}</span>
+                  {hoveredCluster.slice(0, 6).map((s) => {
+                    const alreadyUpvoted = upvotedIds.has(s.id);
+                    return (
+                      <div key={s.id}>
+                        <div className="font-body text-sm text-foreground/85">
+                          {s.species} <span className="text-foreground/40">· {s.sighted_on}</span>
+                        </div>
+                        {s.description && (
+                          <p className="font-body text-xs text-foreground/55 leading-relaxed mt-0.5">{s.description}</p>
+                        )}
+                        {isSightingPinned && (
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleUpvote(s)}
+                              disabled={alreadyUpvoted}
+                              className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
+                                alreadyUpvoted
+                                  ? "text-accent cursor-default"
+                                  : "text-muted-foreground hover:text-accent cursor-pointer"
+                              }`}
+                            >
+                              <ThumbsUp className="w-3 h-3" strokeWidth={1.5} fill={alreadyUpvoted ? "currentColor" : "none"} />
+                              {alreadyUpvoted ? "Seen it too" : "Seen again recently?"}
+                              {s.upvotes > 0 && <span>({s.upvotes})</span>}
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      {s.description && (
-                        <p className="font-body text-xs text-foreground/55 leading-relaxed mt-0.5">{s.description}</p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                {!isSightingPinned && (
+                  <div className="font-mono text-[8px] tracking-[0.1em] text-muted-foreground/60 uppercase mt-2 pt-2 border-t border-border">
+                    Click to confirm a sighting
+                  </div>
+                )}
               </div>
             )}
           </div>
