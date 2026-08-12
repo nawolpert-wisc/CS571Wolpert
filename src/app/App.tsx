@@ -670,6 +670,8 @@ function HeroSection() {
       <img
         src="https://images.unsplash.com/photo-1696835766318-e102285eb088?w=1800&h=1200&fit=crop&auto=format"
         alt="A towering iceberg floating in the North Atlantic off the coast of Newfoundland"
+        loading="eager"
+        fetchPriority="high"
         className="absolute inset-0 w-full h-full object-cover opacity-45"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-[#0C1B2E]/70 via-[#0C1B2E]/20 to-[#0C1B2E]" />
@@ -761,7 +763,7 @@ function DiscoverSection() {
             >
               <div className="h-40 bg-secondary overflow-hidden">
                 {c.image ? (
-                  <img src={c.image} alt={c.title} className="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-all" />
+                  <img src={c.image} alt={c.title} loading="lazy" className="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-all" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-3xl">{c.icon}</div>
                 )}
@@ -809,6 +811,7 @@ function StaySection() {
                 <img
                   src={acc.image}
                   alt={acc.alt}
+                  loading="lazy"
                   className="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
@@ -922,6 +925,7 @@ function RoutesSection() {
               <img
                 src={route.image}
                 alt={route.alt}
+                loading="lazy"
                 className="w-full h-full object-cover opacity-55"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-card/95 to-transparent" />
@@ -1336,6 +1340,7 @@ function HistorySection() {
           <img
             src="https://images.unsplash.com/photo-1567108077905-f8a10e69a5a6?w=1600&h=400&fit=crop&auto=format"
             alt="A traditional wooden longboat on calm water — evoking the Norse seafarers who reached Newfoundland a thousand years ago"
+            loading="lazy"
             className="w-full h-full object-cover opacity-35"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-muted via-transparent to-muted" />
@@ -1423,6 +1428,7 @@ function GanderSection() {
               <img
                 src="https://images.unsplash.com/photo-1639512464796-315a29c939c9?w=800&h=900&fit=crop&auto=format"
                 alt="Northern lights over Canada — the vast sky that sheltered 7,000 strangers in Gander, Newfoundland"
+                loading="lazy"
                 className="w-full h-full object-cover opacity-45"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-transparent to-transparent" />
@@ -1542,6 +1548,9 @@ function MapSection() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [sightings, setSightings] = useState<Sighting[]>([]);
+  const [sightingsStatus, setSightingsStatus] = useState<"loading" | "ready" | "error" | "unavailable">(
+    supabaseConfigured ? "loading" : "unavailable"
+  );
   const [hoveredSightingId, setHoveredSightingId] = useState<string | null>(null);
   const [upvotedIds, setUpvotedIds] = useState<Set<string>>(() => getUpvotedSightingIds());
   const activeId = hovered ?? selected;
@@ -1555,7 +1564,12 @@ function MapSection() {
       .select("*")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
-        if (!error && data) setSightings(data as Sighting[]);
+        if (error || !data) {
+          setSightingsStatus("error");
+          return;
+        }
+        setSightings(data as Sighting[]);
+        setSightingsStatus("ready");
       });
   }, []);
 
@@ -1644,6 +1658,19 @@ function MapSection() {
             Labrador — to the west and north — is connected by ferry from St. Barbe to Blanc-Sablon.
           </p>
         </div>
+
+        {(sightingsStatus === "loading" || sightingsStatus === "error") && (
+          <div
+            role="status"
+            className={`font-mono text-[9px] tracking-[0.2em] uppercase mb-4 ${
+              sightingsStatus === "error" ? "text-destructive" : "text-muted-foreground"
+            }`}
+          >
+            {sightingsStatus === "loading"
+              ? "Loading community sightings…"
+              : "Couldn't load community sightings — try refreshing the page"}
+          </div>
+        )}
 
         <div ref={mapRef} className="grid lg:grid-cols-3 gap-px bg-border">
           {/* SVG Map */}
@@ -2120,7 +2147,7 @@ export default function App() {
                           <div className="w-20 h-14 rounded overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
                             {it.thumbnail ? (
                               // @ts-ignore
-                              <img src={it.thumbnail} alt={it.title} className="w-full h-full object-cover" />
+                              <img src={it.thumbnail} alt={it.title} loading="lazy" className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">{it.section.toUpperCase()}</div>
                             )}
