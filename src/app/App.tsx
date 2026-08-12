@@ -1313,9 +1313,9 @@ function MapSection() {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-px bg-border">
+        <div ref={mapRef} className="grid lg:grid-cols-3 gap-px bg-border">
           {/* SVG Map */}
-          <div ref={mapRef} className="lg:col-span-2 bg-card relative overflow-hidden" style={{ minHeight: 520 }}>
+          <div className="lg:col-span-2 bg-card relative overflow-hidden" style={{ minHeight: 520 }}>
             {/* Dot grid texture */}
             <div
               className="absolute inset-0 opacity-[0.04] pointer-events-none"
@@ -1435,7 +1435,12 @@ function MapSection() {
                         key={loc.id}
                         onMouseEnter={() => setHovered(loc.id)}
                         onMouseLeave={() => setHovered(null)}
-                        className="flex items-center gap-3 py-3 cursor-default group"
+                        onClick={() => setSelected((prev) => (prev === loc.id ? null : loc.id))}
+                        role="button"
+                        aria-pressed={selected === loc.id}
+                        aria-label={loc.name}
+                        style={{ outline: "none" }}
+                        className="flex items-center gap-3 py-3 cursor-pointer group"
                       >
                         <div
                           className="w-2 h-2 rounded-full flex-shrink-0"
