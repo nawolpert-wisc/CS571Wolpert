@@ -3,6 +3,7 @@ import {
   Anchor, MapPin, ChevronDown, Send, Menu, X, ArrowRight, Waves,
 } from "lucide-react";
 import Fuse from "fuse.js";
+import { supabase, supabaseConfigured, type Sighting } from "./lib/supabase";
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
@@ -400,10 +401,21 @@ const TYPE_COLORS: Record<string, string> = {
   nature: "#6B8F71",
 };
 
+const SIGHTING_COLOR = "#E8639F";
+
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+}
+
+// Deterministic pseudo-random jitter so repeat sightings at one location don't stack exactly.
+function jitterOffset(seed: string, spread: number) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  const angle = (hash % 360) * (Math.PI / 180);
+  const radius = 10 + (hash % spread);
+  return { dx: Math.cos(angle) * radius, dy: Math.sin(angle) * radius };
 }
 
 // Lightweight fuzzy matcher: returns 0 for no match, higher is better
@@ -846,9 +858,38 @@ function WildlifeSection() {
     species: "", location: "", date: "", description: "", name: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setSubmitError(null);
+
+    if (!supabaseConfigured) {
+      setSubmitError("Sighting reports aren't connected to storage yet.");
+      return;
+    }
+
+    setSubmitting(true);
+    const { data, error } = await supabase
+      .from("sightings")
+      .insert({
+        species: form.species,
+        location_id: form.location,
+        sighted_on: form.date,
+        description: form.description || null,
+        reporter_name: form.name || null,
+      })
+      .select()
+      .single();
+    setSubmitting(false);
+
+    if (error) {
+      setSubmitError("Something went wrong submitting your sighting. Please try again.");
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("sighting-added", { detail: data as Sighting }));
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 5000);
     setForm({ species: "", location: "", date: "", description: "", name: "" });
@@ -960,6 +1001,11 @@ function WildlifeSection() {
                 ✓ Sighting submitted — thank you for your report!
               </div>
             )}
+            {submitError && (
+              <div className="bg-destructive/10 border border-destructive/25 p-4 font-mono text-[10px] tracking-[0.15em] text-destructive uppercase">
+                {submitError}
+              </div>
+            )}
 
             <div>
               <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
@@ -983,13 +1029,17 @@ function WildlifeSection() {
                 <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
                   Location *
                 </label>
-                <input
+                <select
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
-                  placeholder="e.g. Twillingate, NL"
                   required
-                  className="w-full bg-muted border border-border text-foreground font-body text-sm px-4 py-3 placeholder:text-muted-foreground/40 focus:border-accent focus:outline-none"
-                />
+                  className="w-full bg-muted border border-border text-foreground font-body text-sm px-4 py-3 focus:border-accent focus:outline-none appearance-none"
+                >
+                  <option value="">Select a location…</option>
+                  {MAP_LOCATIONS.map((loc) => (
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
@@ -1032,10 +1082,11 @@ function WildlifeSection() {
 
             <button
               type="submit"
-              className="w-full bg-primary text-primary-foreground font-mono text-[11px] tracking-[0.25em] uppercase py-4 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2.5"
+              disabled={submitting}
+              className="w-full bg-primary text-primary-foreground font-mono text-[11px] tracking-[0.25em] uppercase py-4 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2.5"
             >
               <Send className="w-3.5 h-3.5" />
-              Submit Sighting
+              {submitting ? "Submitting…" : "Submit Sighting"}
             </button>
           </form>
         </div>
@@ -1272,9 +1323,38 @@ function EventsSection() {
 function MapSection() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [sightings, setSightings] = useState<Sighting[]>([]);
   const activeId = hovered ?? selected;
   const hoveredLoc = MAP_LOCATIONS.find((l) => l.id === activeId);
   const mapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    supabase
+      .from("sightings")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) setSightings(data as Sighting[]);
+      });
+  }, []);
+
+  useEffect(() => {
+    function handler(e: any) {
+      const sighting = e?.detail as Sighting | undefined;
+      if (sighting) setSightings((prev) => [sighting, ...prev]);
+    }
+    window.addEventListener("sighting-added", handler as EventListener);
+    return () => window.removeEventListener("sighting-added", handler as EventListener);
+  }, []);
+
+  const sightingsByLocation = useMemo(() => {
+    const map: Record<string, Sighting[]> = {};
+    for (const s of sightings) {
+      (map[s.location_id] ??= []).push(s);
+    }
+    return map;
+  }, [sightings]);
 
   useEffect(() => {
     function handler(e: any) {
@@ -1375,6 +1455,24 @@ function MapSection() {
                 );
               })}
 
+              {/* Community sighting reports */}
+              {sightings.map((s) => {
+                const loc = MAP_LOCATIONS.find((l) => l.id === s.location_id);
+                if (!loc) return null;
+                const { dx, dy } = jitterOffset(s.id, 10);
+                return (
+                  <circle
+                    key={s.id}
+                    cx={loc.x + dx}
+                    cy={loc.y + dy}
+                    r="2.5"
+                    fill={SIGHTING_COLOR}
+                    opacity="0.85"
+                    pointerEvents="none"
+                  />
+                );
+              })}
+
               {/* Active location label */}
               {hoveredLoc && (
                 <text
@@ -1423,6 +1521,29 @@ function MapSection() {
                   </div>
                   <h3 className="font-display text-2xl text-foreground mb-4">{hoveredLoc.name}</h3>
                   <p className="font-body text-sm text-foreground/60 leading-relaxed">{hoveredLoc.info}</p>
+
+                  {(sightingsByLocation[hoveredLoc.id]?.length ?? 0) > 0 && (
+                    <div className="mt-6 pt-6 border-t border-border">
+                      <div className="font-mono text-[9px] tracking-[0.2em] uppercase mb-3" style={{ color: SIGHTING_COLOR }}>
+                        Community Sightings ({sightingsByLocation[hoveredLoc.id].length})
+                      </div>
+                      <div className="space-y-3">
+                        {sightingsByLocation[hoveredLoc.id].slice(0, 5).map((s) => (
+                          <div key={s.id} className="flex items-start gap-2.5">
+                            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ background: SIGHTING_COLOR }} />
+                            <div>
+                              <div className="font-body text-sm text-foreground/80">
+                                {s.species} <span className="text-foreground/40">· {s.sighted_on}</span>
+                              </div>
+                              {s.description && (
+                                <p className="font-body text-xs text-foreground/50 leading-relaxed mt-0.5">{s.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -1466,6 +1587,10 @@ function MapSection() {
                     <span className="font-mono text-[9px] tracking-[0.1em] text-muted-foreground uppercase">{type}</span>
                   </div>
                 ))}
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: SIGHTING_COLOR }} />
+                  <span className="font-mono text-[9px] tracking-[0.1em] text-muted-foreground uppercase">Sighting</span>
+                </div>
               </div>
             </div>
           </div>

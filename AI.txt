@@ -18,3 +18,11 @@ file that was generated as part of the boilerplate app dev from the first assign
 After that I went on to try and correct the weird AI artifacts with in the webpage itself, i.e. random pictures of essentially
 getysburg images of people.
 
+Updates made:
+The map now supports click-to-pin: clicking a marker (or a row in the "Key Locations" list) locks its description in the 
+detail panel until you click a different marker/row or click elsewhere, instead of the description vanishing the moment you 
+moved the mouse off. Markers still show a quick preview on hover, and a browser-default focus outline that appeared on click was 
+suppressed in favor of the app's own circle highlight. The list initially got the same hover-preview treatment as the markers, but 
+that caused hovering to get stuck — since hovering a row swapped it out for the detail view, the row's own mouse-leave never fired. 
+That was resolved by dropping hover from the list entirely, leaving it click-only while the markers keep both hover and click.
+
