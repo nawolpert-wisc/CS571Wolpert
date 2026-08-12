@@ -950,6 +950,13 @@ function LocationPicker({ value, onChange }: { value: string; onChange: (id: str
           if (e.target.value !== selected?.name) onChange("");
         }}
         onFocus={() => setOpen(true)}
+        onBlur={() => {
+          if (value || !query.trim()) return;
+          // Clicked/tabbed away without picking a suggestion — autocomplete to the closest match.
+          const top = results[0];
+          if (top) choose(top);
+          else setQuery("");
+        }}
         onKeyDown={(e) => {
           if (!open || results.length === 0) return;
           if (e.key === "ArrowDown") {
@@ -1462,6 +1469,7 @@ function MapSection() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [sightings, setSightings] = useState<Sighting[]>([]);
+  const [hoveredSightingId, setHoveredSightingId] = useState<string | null>(null);
   const activeId = hovered ?? selected;
   const hoveredLoc = MAP_LOCATIONS.find((l) => l.id === activeId);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -1493,6 +1501,12 @@ function MapSection() {
     }
     return map;
   }, [sightings]);
+
+  const hoveredSighting = sightings.find((s) => s.id === hoveredSightingId);
+  const hoveredCluster = hoveredSighting ? sightingsByLocation[hoveredSighting.location_id] ?? [hoveredSighting] : null;
+  const hoveredClusterLoc = hoveredSighting
+    ? SIGHTING_PLACES.find((p) => p.id === hoveredSighting.location_id)
+    : undefined;
 
   useEffect(() => {
     function handler(e: any) {
@@ -1598,15 +1612,18 @@ function MapSection() {
                 const loc = SIGHTING_PLACES.find((l) => l.id === s.location_id);
                 if (!loc) return null;
                 const { dx, dy } = jitterOffset(s.id, 10);
+                const isActive = hoveredSighting?.location_id === s.location_id;
                 return (
                   <circle
                     key={s.id}
                     cx={loc.x + dx}
                     cy={loc.y + dy}
-                    r="2.5"
+                    r={isActive ? 3.5 : 2.5}
                     fill={SIGHTING_COLOR}
                     opacity="0.85"
-                    pointerEvents="none"
+                    style={{ cursor: "pointer", transition: "r 0.1s" }}
+                    onMouseEnter={() => setHoveredSightingId(s.id)}
+                    onMouseLeave={() => setHoveredSightingId(null)}
                   />
                 );
               })}
@@ -1640,6 +1657,36 @@ function MapSection() {
                 <text x="8" y="-6" fill="#7A9BB8" fontSize="7" fontFamily="JetBrains Mono, monospace" opacity="0.5">~100 km</text>
               </g>
             </svg>
+
+            {/* Sighting hover tooltip */}
+            {hoveredSighting && hoveredCluster && hoveredClusterLoc && (
+              <div
+                className="absolute bg-card border border-border shadow-lg px-4 py-3 max-w-[240px]"
+                style={{
+                  pointerEvents: "none",
+                  zIndex: 10,
+                  left: `${(hoveredClusterLoc.x / 440) * 100}%`,
+                  top: `${(hoveredClusterLoc.y / 420) * 100}%`,
+                  transform: `translate(${hoveredClusterLoc.x > 330 ? "-105%" : "12px"}, ${hoveredClusterLoc.y < 60 ? "0%" : "-50%"})`,
+                }}
+              >
+                <div className="font-mono text-[9px] tracking-[0.2em] uppercase mb-2" style={{ color: SIGHTING_COLOR }}>
+                  {hoveredClusterLoc.name} · {hoveredCluster.length} sighting{hoveredCluster.length > 1 ? "s" : ""}
+                </div>
+                <div className="space-y-2.5 max-h-48 overflow-y-auto">
+                  {hoveredCluster.slice(0, 6).map((s) => (
+                    <div key={s.id}>
+                      <div className="font-body text-sm text-foreground/85">
+                        {s.species} <span className="text-foreground/40">· {s.sighted_on}</span>
+                      </div>
+                      {s.description && (
+                        <p className="font-body text-xs text-foreground/55 leading-relaxed mt-0.5">{s.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Location detail panel */}
