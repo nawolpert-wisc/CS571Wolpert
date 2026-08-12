@@ -1363,7 +1363,7 @@ function MapSection() {
                       e.stopPropagation();
                       setSelected((prev) => (prev === loc.id ? null : loc.id));
                     }}
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: "pointer", outline: "none" }}
                     role="button"
                     aria-label={loc.name}
                     aria-pressed={selected === loc.id}
