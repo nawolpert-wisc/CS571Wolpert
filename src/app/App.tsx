@@ -29,7 +29,7 @@ const ACCOMMODATIONS = [
     description: "A world-renowned architectural masterpiece perched on the ancient rock of Fogo Island. Handcrafted interiors celebrate the outport community that built it. Icebergs drift past floor-to-ceiling windows.",
     highlight: "World's Top Destination",
     image: "https://images.unsplash.com/photo-1672858034618-d0ef20167244?w=800&h=500&fit=crop&auto=format",
-    alt: "Colorful houses lining the waterfront of a fishing harbour",
+    alt: "Brightly painted outport houses along a Newfoundland fishing harbour, evoking Fogo Island Inn's setting",
   },
   {
     name: "Murray Premises Hotel",
@@ -38,7 +38,7 @@ const ACCOMMODATIONS = [
     description: "A lovingly restored 19th-century waterfront warehouse in the heart of St. John's Harbour. Stone walls, exposed timber beams, and harbour views preserve centuries of merchant history.",
     highlight: "Historic Waterfront",
     image: "https://images.unsplash.com/photo-1560279764-b5fdbcacd7ab?w=800&h=500&fit=crop&auto=format",
-    alt: "Aerial view of rugged seashore from above",
+    alt: "Aerial view of a rugged Atlantic seashore near St. John's",
   },
   {
     name: "Marble Mountain Lodge",
@@ -47,7 +47,7 @@ const ACCOMMODATIONS = [
     description: "Gateway to Newfoundland's finest alpine terrain and the Humber Valley wilderness. Year-round adventure anchored by river, trail, and the Long Range Mountains.",
     highlight: "Alpine & River",
     image: "https://images.unsplash.com/photo-1567733872248-2532a2e16f77?w=800&h=500&fit=crop&auto=format",
-    alt: "Mountain ranges beside a still body of water",
+    alt: "Forested mountain ranges rising beside a still river valley near Corner Brook",
   },
   {
     name: "Twillingate Inn & Suites",
@@ -56,7 +56,7 @@ const ACCOMMODATIONS = [
     description: "Prime position in the Iceberg Capital of the World. Watch towering bergs drift past from your balcony. Board whale-watching vessels steps from the dock.",
     highlight: "Iceberg Capital",
     image: "https://images.unsplash.com/photo-1690125426341-9ed6a4e7460b?w=800&h=500&fit=crop&auto=format",
-    alt: "Large iceberg floating near a rocky Atlantic shore",
+    alt: "Large iceberg floating near a rocky Atlantic shore off Twillingate",
   },
   {
     name: "Hotel Gander",
@@ -65,7 +65,7 @@ const ACCOMMODATIONS = [
     description: "Steeped in aviation history and the community spirit that opened its doors to 7,000 strangers in September 2001. Gateway to the heart of the island.",
     highlight: "Come From Away Heritage",
     image: "https://images.unsplash.com/photo-1560278998-e046cffdef59?w=800&h=500&fit=crop&auto=format",
-    alt: "Moody ocean photography at dusk",
+    alt: "Warm dusk light over calm inland waters near Gander",
   },
   {
     name: "Gros Morne Wilderness Cabins",
@@ -74,7 +74,7 @@ const ACCOMMODATIONS = [
     description: "Sleep under the UNESCO World Heritage skies of Gros Morne. Ancient Tablelands geology, Western Brook Pond fjords, and the Long Range Traverse are at your door.",
     highlight: "UNESCO Heritage Park",
     image: "https://images.unsplash.com/photo-1633344696307-d230135c51e5?w=800&h=500&fit=crop&auto=format",
-    alt: "A vast body of water beside ancient mountains",
+    alt: "A fjord lake beside the ancient Tablelands of Gros Morne National Park",
   },
 ];
 
@@ -567,8 +567,25 @@ function SectionLabel({ number, label }: { number: string; label: string }) {
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 
-function Nav({ activeSection, onSearchChange, searchQuery }: { activeSection: string; onSearchChange: (q: string) => void; searchQuery: string; }) {
+function Nav({ activeSection, onSearchChange, searchQuery, activeResultId }: { activeSection: string; onSearchChange: (q: string) => void; searchQuery: string; activeResultId?: string; }) {
   const [open, setOpen] = useState(false);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
+  const menuPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    // Move focus into the panel when it opens, and support Escape-to-close.
+    const firstLink = menuPanelRef.current?.querySelector("button");
+    (firstLink as HTMLButtonElement | null)?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false);
+        menuToggleRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
@@ -599,6 +616,11 @@ function Nav({ activeSection, onSearchChange, searchQuery }: { activeSection: st
         <div className="hidden md:flex items-center ml-4">
           <input
             aria-label="Search"
+            role="combobox"
+            aria-expanded={searchQuery.length > 0}
+            aria-autocomplete="list"
+            aria-controls="search-results-listbox"
+            aria-activedescendant={activeResultId}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search places, routes, events…"
@@ -607,20 +629,24 @@ function Nav({ activeSection, onSearchChange, searchQuery }: { activeSection: st
         </div>
 
         <button
+          ref={menuToggleRef}
           className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setOpen(!open)}
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          aria-controls="mobile-nav-menu"
         >
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
 
       {open && (
-        <div className="lg:hidden bg-card border-t border-border px-6 py-5">
+        <div id="mobile-nav-menu" ref={menuPanelRef} className="lg:hidden bg-card border-t border-border px-6 py-5">
           <div className="grid grid-cols-3 gap-y-3">
             {NAV_LINKS.map((l) => (
               <button
                 key={l.id}
-                onClick={() => { scrollTo(l.id); setOpen(false); }}
+                onClick={() => { scrollTo(l.id); setOpen(false); menuToggleRef.current?.focus(); }}
                 className="font-mono text-[10px] tracking-[0.2em] uppercase text-muted-foreground hover:text-accent transition-colors text-left py-1"
               >
                 {l.label}
@@ -937,12 +963,14 @@ function RoutesSection() {
 // ─── WILDLIFE ────────────────────────────────────────────────────────────────
 
 // Fuzzy-matching text input for picking a sighting location from SIGHTING_PLACES.
-function LocationPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+function LocationPicker({ id, value, onChange }: { id: string; value: string; onChange: (id: string) => void }) {
   const selected = SIGHTING_PLACES.find((p) => p.id === value);
   const [query, setQuery] = useState(selected?.name ?? "");
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const listboxId = `${id}-listbox`;
+  const optionId = (placeId: string) => `${id}-option-${placeId}`;
 
   const fuse = useMemo(
     () => new Fuse(SIGHTING_PLACES, { keys: ["name"], threshold: 0.4 }),
@@ -971,6 +999,7 @@ function LocationPicker({ value, onChange }: { value: string; onChange: (id: str
   return (
     <div ref={wrapRef} className="relative">
       <input
+        id={id}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -1003,13 +1032,23 @@ function LocationPicker({ value, onChange }: { value: string; onChange: (id: str
         }}
         placeholder="Start typing a community…"
         autoComplete="off"
+        required
+        aria-required="true"
+        role="combobox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+        aria-controls={listboxId}
+        aria-activedescendant={open && results[highlighted] ? optionId(results[highlighted].id) : undefined}
         className="w-full bg-muted border border-border text-foreground font-body text-sm px-4 py-3 placeholder:text-muted-foreground/40 focus:border-accent focus:outline-none"
       />
       {open && results.length > 0 && (
-        <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-card border border-border max-h-56 overflow-y-auto">
+        <div id={listboxId} role="listbox" className="absolute z-10 top-full left-0 right-0 mt-1 bg-card border border-border max-h-56 overflow-y-auto">
           {results.map((place, i) => (
             <div
               key={place.id}
+              id={optionId(place.id)}
+              role="option"
+              aria-selected={i === highlighted}
               onMouseDown={(e) => {
                 e.preventDefault();
                 choose(place);
@@ -1169,7 +1208,7 @@ function WildlifeSection() {
               ].map((item) => (
                 <div key={item.text} className="flex items-start gap-3">
                   <span className="text-base mt-0.5 leading-none">{item.icon}</span>
-                  <p className="font-body text-sm text-foreground/50 leading-relaxed">{item.text}</p>
+                  <p className="font-body text-sm text-foreground/60 leading-relaxed">{item.text}</p>
                 </div>
               ))}
             </div>
@@ -1188,10 +1227,11 @@ function WildlifeSection() {
             )}
 
             <div>
-              <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
+              <label htmlFor="sighting-species" className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
                 Species *
               </label>
               <select
+                id="sighting-species"
                 value={form.species}
                 onChange={(e) => setForm({ ...form, species: e.target.value })}
                 required
@@ -1206,20 +1246,22 @@ function WildlifeSection() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
+                <label htmlFor="sighting-location" className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
                   Location *
                 </label>
                 <LocationPicker
                   key={locationFieldKey}
+                  id="sighting-location"
                   value={form.location}
                   onChange={(id) => setForm((f) => ({ ...f, location: id }))}
                 />
               </div>
               <div>
-                <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
+                <label htmlFor="sighting-date" className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
                   Date *
                 </label>
                 <input
+                  id="sighting-date"
                   type="date"
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
@@ -1230,10 +1272,11 @@ function WildlifeSection() {
             </div>
 
             <div>
-              <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
+              <label htmlFor="sighting-description" className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
                 Description
               </label>
               <textarea
+                id="sighting-description"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 placeholder="What did you see? Size, count, behaviour, conditions…"
@@ -1243,10 +1286,11 @@ function WildlifeSection() {
             </div>
 
             <div>
-              <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
+              <label htmlFor="sighting-name" className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
                 Your Name
               </label>
               <input
+                id="sighting-name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Anonymous is perfectly fine"
@@ -1641,16 +1685,27 @@ function MapSection() {
               {MAP_LOCATIONS.map((loc) => {
                 const color = TYPE_COLORS[loc.type];
                 const isHovered = activeId === loc.id;
+                const toggleSelected = () => setSelected((prev) => (prev === loc.id ? null : loc.id));
                 return (
                   <g
                     key={loc.id}
                     transform={`translate(${loc.x},${loc.y})`}
                     onMouseEnter={() => setHovered(loc.id)}
                     onMouseLeave={() => setHovered(null)}
+                    onFocus={() => setHovered(loc.id)}
+                    onBlur={() => setHovered(null)}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelected((prev) => (prev === loc.id ? null : loc.id));
+                      toggleSelected();
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleSelected();
+                      }
+                    }}
+                    tabIndex={0}
                     style={{ cursor: "pointer", outline: "none" }}
                     role="button"
                     aria-label={loc.name}
@@ -1779,7 +1834,7 @@ function MapSection() {
                                   {s.species} <span className="text-foreground/40">· {s.sighted_on}</span>
                                 </div>
                                 {s.description && (
-                                  <p className="font-body text-xs text-foreground/50 leading-relaxed mt-0.5">{s.description}</p>
+                                  <p className="font-body text-xs text-foreground/60 leading-relaxed mt-0.5">{s.description}</p>
                                 )}
                                 <div className="flex items-center gap-3 mt-1.5">
                                   <button
@@ -1818,6 +1873,13 @@ function MapSection() {
                       <div
                         key={loc.id}
                         onClick={() => setSelected((prev) => (prev === loc.id ? null : loc.id))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelected((prev) => (prev === loc.id ? null : loc.id));
+                          }
+                        }}
+                        tabIndex={0}
                         role="button"
                         aria-pressed={selected === loc.id}
                         aria-label={loc.name}
@@ -2017,7 +2079,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Nav activeSection={activeSection} onSearchChange={setSearchQuery} searchQuery={searchQuery} />
+      <Nav
+        activeSection={activeSection}
+        onSearchChange={setSearchQuery}
+        searchQuery={searchQuery}
+        activeResultId={fuseResults.length > 0 ? `result-${selectedIndex}` : undefined}
+      />
       {searchQuery.length > 0 && (
         <div className="fixed top-16 left-0 right-0 z-50 px-6">
           <div className="max-w-7xl mx-auto bg-card border border-border shadow-lg">
@@ -2027,7 +2094,7 @@ export default function App() {
               ) : (
                 <>
                   <div className="sr-only" aria-live="polite" aria-atomic="true">{`${fuseResults.length} results`}</div>
-                  <div ref={resultsRef} className="p-2 grid gap-1" role="listbox" aria-activedescendant={`result-${selectedIndex}`} tabIndex={-1} aria-label="Search results">
+                  <div id="search-results-listbox" ref={resultsRef} className="p-2 grid gap-1" role="listbox" aria-activedescendant={`result-${selectedIndex}`} tabIndex={-1} aria-label="Search results">
                     {fuseResults.slice(0, 8).map((r, i) => {
                       const it = r.item as any;
                       const selected = i === selectedIndex;
