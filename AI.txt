@@ -26,3 +26,17 @@ suppressed in favor of the app's own circle highlight. The list initially got th
 that caused hovering to get stuck — since hovering a row swapped it out for the detail view, the row's own mouse-leave never fired. 
 That was resolved by dropping hover from the list entirely, leaving it click-only while the markers keep both hover and click.
 
+Added a Supabase-backed community wildlife-sighting system, submissions insert into a sightings table and appear as dots on the 
+island map, matched to a location picked from a fuzzy-search with in the search field. Hovering a sighting dot shows a tooltip with 
+species, date, and description, grouping multiple reports at the same spot into one list; visitors can also upvote a sighting as 
+"seen again recently," which bumps a confirmation count and timestamp and re-sorts each location's list by most recently confirmed.
+
+I had claude run an accessibility audit and where it fixed the highest-impact findings: paired form labels to their fields via htmlFor/id, 
+added proper combobox/listbox ARIA to the location picker and search bar, made map markers and location-list rows 
+keyboard-operable (they were mouse-only), gave the icon-only mobile nav toggle an accessible name plus Escape-to-close and 
+focus management, rewrote accommodation alt text that didn't match its photo, and corrected two text-contrast values that measured 
+below WCAG AA.
+
+I also had claude do some performance/reliability cleanup: lazy-loading on below-the-fold images (with the hero image kept eager/high-priority 
+as the page's LCP element), and a visible loading/error state for the sightings fetch instead of it failing silently. By prompting it to 
+look at other opportunities for optimization.
