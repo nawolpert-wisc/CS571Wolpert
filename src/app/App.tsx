@@ -403,6 +403,60 @@ const TYPE_COLORS: Record<string, string> = {
 
 const SIGHTING_COLOR = "#E8639F";
 
+// Additional island communities (island only — Labrador isn't drawn on this map), positioned by
+// fitting a lat/lng-to-pixel transform against the 12 hand-placed MAP_LOCATIONS markers above,
+// then snapping any point that lands outside the illustrated coastline back onto the island.
+// Used only to give sighting reports a plottable, discrete location — not shown as its own marker.
+const MORE_PLACES = [
+  { id: "mountpearl", name: "Mount Pearl", x: 298.3, y: 228.6 },
+  { id: "paradise", name: "Paradise", x: 296.8, y: 228.3 },
+  { id: "conceptionbaysouth", name: "Conception Bay South", x: 298, y: 231.6 },
+  { id: "torbay", name: "Torbay", x: 305.5, y: 223.9 },
+  { id: "portugalcove", name: "Portugal Cove-St. Philip's", x: 302, y: 226.3 },
+  { id: "carbonear", name: "Carbonear", x: 299.8, y: 226.6 },
+  { id: "harbourgrace", name: "Harbour Grace", x: 300, y: 228.1 },
+  { id: "placentia", name: "Placentia", x: 273.9, y: 253.4 },
+  { id: "marystown", name: "Marystown", x: 238, y: 290.6 },
+  { id: "grandbank", name: "Grand Bank", x: 209.7, y: 301.9 },
+  { id: "burin", name: "Burin", x: 238.6, y: 299.4 },
+  { id: "clarenville", name: "Clarenville", x: 283.9, y: 214.2 },
+  { id: "trinity", name: "Trinity", x: 310.5, y: 193.4 },
+  { id: "elliston", name: "Elliston", x: 312.6, y: 176.7 },
+  { id: "catalina", name: "Catalina", x: 312.9, y: 184 },
+  { id: "deerlake", name: "Deer Lake", x: 112, y: 188.9 },
+  { id: "stephenville", name: "Stephenville", x: 64.1, y: 241.8 },
+  { id: "stanthony", name: "St. Anthony", x: 177.4, y: 28.2 },
+  { id: "norrispoint", name: "Norris Point", x: 87.2, y: 171.8 },
+  { id: "woodypoint", name: "Woody Point", x: 85.8, y: 173.6 },
+  { id: "cowhead", name: "Cow Head", x: 115.2, y: 158.9 },
+  { id: "baieverte", name: "Baie Verte", x: 163.3, y: 126.4 },
+  { id: "springdale", name: "Springdale", x: 172.9, y: 152.7 },
+  { id: "grandfallswindsor", name: "Grand Falls-Windsor", x: 197, y: 184.2 },
+  { id: "botwood", name: "Botwood", x: 209.9, y: 167.1 },
+  { id: "lewisporte", name: "Lewisporte", x: 222.7, y: 157.5 },
+  { id: "changeislands", name: "Change Islands", x: 248.1, y: 119 },
+  { id: "eastport", name: "Eastport", x: 290.1, y: 178 },
+  { id: "musgraveharbour", name: "Musgrave Harbour", x: 271.9, y: 131.9 },
+  { id: "wesleyville", name: "Wesleyville", x: 293.7, y: 147.5 },
+  { id: "baybulls", name: "Bay Bulls", x: 345.4, y: 254.7 },
+  { id: "capebroyle", name: "Cape Broyle", x: 341.3, y: 265.6 },
+  { id: "renews", name: "Renews", x: 343.8, y: 280.9 },
+  { id: "trepassey", name: "Trepassey", x: 325.9, y: 297.9 },
+  { id: "stbrides", name: "St. Bride's", x: 272.1, y: 273.9 },
+  { id: "comebychance", name: "Come By Chance", x: 285, y: 236 },
+  { id: "tilting", name: "Tilting", x: 265.5, y: 115.9 },
+  { id: "joebattsarm", name: "Joe Batt's Arm", x: 259.8, y: 116.2 },
+  { id: "burgeo", name: "Burgeo", x: 118.1, y: 290.2 },
+  { id: "ramea", name: "Ramea", x: 129.2, y: 294.1 },
+  { id: "isleauxmorts", name: "Isle aux Morts", x: 71.1, y: 299.2 },
+];
+
+// Every place a sighting can be pinned to: the 12 featured map markers plus the wider community list.
+const SIGHTING_PLACES = [
+  ...MAP_LOCATIONS.map((l) => ({ id: l.id, name: l.name, x: l.x, y: l.y })),
+  ...MORE_PLACES,
+];
+
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 
 function scrollTo(id: string) {
@@ -853,6 +907,89 @@ function RoutesSection() {
 
 // ─── WILDLIFE ────────────────────────────────────────────────────────────────
 
+// Fuzzy-matching text input for picking a sighting location from SIGHTING_PLACES.
+function LocationPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const selected = SIGHTING_PLACES.find((p) => p.id === value);
+  const [query, setQuery] = useState(selected?.name ?? "");
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const fuse = useMemo(
+    () => new Fuse(SIGHTING_PLACES, { keys: ["name"], threshold: 0.4 }),
+    []
+  );
+
+  const results = useMemo(() => {
+    if (!query) return SIGHTING_PLACES.slice(0, 8);
+    return fuse.search(query, { limit: 8 }).map((r) => r.item);
+  }, [fuse, query]);
+
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  function choose(place: { id: string; name: string }) {
+    onChange(place.id);
+    setQuery(place.name);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <input
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setHighlighted(0);
+          setOpen(true);
+          if (e.target.value !== selected?.name) onChange("");
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (!open || results.length === 0) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setHighlighted((i) => (i + 1) % results.length);
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHighlighted((i) => (i - 1 + results.length) % results.length);
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            choose(results[highlighted]);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        placeholder="Start typing a community…"
+        autoComplete="off"
+        className="w-full bg-muted border border-border text-foreground font-body text-sm px-4 py-3 placeholder:text-muted-foreground/40 focus:border-accent focus:outline-none"
+      />
+      {open && results.length > 0 && (
+        <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-card border border-border max-h-56 overflow-y-auto">
+          {results.map((place, i) => (
+            <div
+              key={place.id}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                choose(place);
+              }}
+              onMouseEnter={() => setHighlighted(i)}
+              className={`px-4 py-2.5 font-body text-sm cursor-pointer ${i === highlighted ? "bg-accent/15 text-foreground" : "text-foreground/70"}`}
+            >
+              {place.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WildlifeSection() {
   const [form, setForm] = useState({
     species: "", location: "", date: "", description: "", name: "",
@@ -860,6 +997,7 @@ function WildlifeSection() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [locationFieldKey, setLocationFieldKey] = useState(0);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -867,6 +1005,11 @@ function WildlifeSection() {
 
     if (!supabaseConfigured) {
       setSubmitError("Sighting reports aren't connected to storage yet.");
+      return;
+    }
+
+    if (!SIGHTING_PLACES.some((p) => p.id === form.location)) {
+      setSubmitError("Please pick a location from the suggestions list.");
       return;
     }
 
@@ -893,6 +1036,7 @@ function WildlifeSection() {
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 5000);
     setForm({ species: "", location: "", date: "", description: "", name: "" });
+    setLocationFieldKey((k) => k + 1);
   }
 
   const calendarItems = [
@@ -1029,17 +1173,11 @@ function WildlifeSection() {
                 <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
                   Location *
                 </label>
-                <select
+                <LocationPicker
+                  key={locationFieldKey}
                   value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
-                  required
-                  className="w-full bg-muted border border-border text-foreground font-body text-sm px-4 py-3 focus:border-accent focus:outline-none appearance-none"
-                >
-                  <option value="">Select a location…</option>
-                  {MAP_LOCATIONS.map((loc) => (
-                    <option key={loc.id} value={loc.id}>{loc.name}</option>
-                  ))}
-                </select>
+                  onChange={(id) => setForm((f) => ({ ...f, location: id }))}
+                />
               </div>
               <div>
                 <label className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground uppercase block mb-2">
@@ -1457,7 +1595,7 @@ function MapSection() {
 
               {/* Community sighting reports */}
               {sightings.map((s) => {
-                const loc = MAP_LOCATIONS.find((l) => l.id === s.location_id);
+                const loc = SIGHTING_PLACES.find((l) => l.id === s.location_id);
                 if (!loc) return null;
                 const { dx, dy } = jitterOffset(s.id, 10);
                 return (
