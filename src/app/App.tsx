@@ -84,6 +84,7 @@ const RESTAURANTS = [
     cuisine: "Contemporary Canadian",
     description: "Chef Jeremy Charles's landmark in a restored 19th-century merchant building. Wild game, foraged greens, and salt-cured Atlantic seafood presented with quiet precision.",
     signature: "Salt Cod Brandade",
+    image: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&h=500&fit=crop&auto=format",
   },
   {
     name: "Bacalao",
@@ -91,6 +92,7 @@ const RESTAURANTS = [
     cuisine: "Traditional Newfoundland",
     description: "The first restaurant devoted entirely to contemporary Newfoundland cuisine. Jiggs' dinner, fish 'n' brewis, and figgy duff elevated with real craft.",
     signature: "Jiggs' Dinner Reimagined",
+    image: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=800&h=500&fit=crop&auto=format",
   },
   {
     name: "Chinched Bistro",
@@ -98,6 +100,7 @@ const RESTAURANTS = [
     cuisine: "Charcuterie & Local",
     description: "A beloved Water Street institution championing house-cured meats, local cheeses, and small plates that honour the province's larder with European precision.",
     signature: "Moose Mortadella",
+    image: "https://images.unsplash.com/photo-1529692236671-f1c4b4ddf08a?w=800&h=500&fit=crop&auto=format",
   },
   {
     name: "Bonavista Social Club",
@@ -105,6 +108,7 @@ const RESTAURANTS = [
     cuisine: "Coastal Bistro",
     description: "Set in a restored heritage property overlooking the harbour where John Cabot made landfall in 1497. Fresh catches, wood-fired bread, and a warmth that invites lingering.",
     signature: "Cod Cheeks & Scrunchions",
+    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=500&fit=crop&auto=format",
   },
   {
     name: "The Reluctant Chef",
@@ -112,6 +116,7 @@ const RESTAURANTS = [
     cuisine: "Farm-to-Table",
     description: "The west coast's finest table, sourcing directly from regional producers and foragers. An ever-changing menu guided by Newfoundland's brief, generous seasons.",
     signature: "Partridgeberry Duck",
+    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=500&fit=crop&auto=format",
   },
   {
     name: "Lighthouse Picnics",
@@ -119,6 +124,7 @@ const RESTAURANTS = [
     cuisine: "Artisan Picnic",
     description: "Unique cliffside picnic experiences overlooking the world's largest accessible puffin colony. Wicker baskets packed with local charcuterie, cheese, and toutons.",
     signature: "Puffin-View Basket",
+    image: "https://images.unsplash.com/photo-1496417263034-38ec4f0b665a?w=800&h=500&fit=crop&auto=format",
   },
 ];
 
